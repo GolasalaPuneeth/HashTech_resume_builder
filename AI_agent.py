@@ -63,3 +63,10 @@ def rebuilt_agent(system_prompt:str,user_info:str):
     if isinstance(result.output, ResumeData):
         return result.output.model_dump()  # Use Pydantic's model_dump()
     return result.output
+
+@celery_app.task(name='tasks.delete_file')
+def delete_file(file_path):
+    try:
+        os.remove(file_path)
+    except Exception as error:
+        print(f"error at file delete: {error}")

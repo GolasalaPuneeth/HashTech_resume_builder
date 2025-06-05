@@ -1,13 +1,18 @@
-from fastapi import FastAPI,UploadFile,File,HTTPException,status
+from fastapi import FastAPI,UploadFile,File,HTTPException,status,Body
+from fastapi.responses import JSONResponse, FileResponse
+from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Union
 from validation import TaskID,ResumeData,JobDescWithID,ResumeAndCurrentTaskID,CompareData,FinalBuilder
 from celery.result import AsyncResult
-from app_tools import save_file
-from AI_agent import struct_agent,celery_app,compare_agent,rebuilt_agent
+from app_tools import save_file,generate_resume_from_json,PDF_DIR
+from AI_agent import struct_agent,celery_app,compare_agent,rebuilt_agent,delete_file
 from prompts import convert_struct_prompt,compare_struct_prompt,resume_rebuilt_prompt
 import uvicorn
+import os
 
+EXPIRE_TIME: int = 300
+FILE_EXPIRE: int = 150
 
 app = FastAPI()
 app.add_middleware(
@@ -22,13 +27,13 @@ app.add_middleware(
 @app.post("/upload_file/",response_model=TaskID,status_code=status.HTTP_201_CREATED)
 async def get_file(resume: UploadFile = File(...)):
     filepath = await save_file(resume)
+    delete_file.apply_async((filepath,), countdown=EXPIRE_TIME)
     task = struct_agent.delay(convert_struct_prompt,filepath)
     return TaskID(task_id=task.id)
 
 @app.get("/check-status",response_model=Union[None|str])
 def check_task_status(task_id: str  ):
     task_result = AsyncResult(task_id,app=celery_app)
-    print(type(task_result.status))
     return task_result.status
 
 @app.get("/get_result",response_model=Union[ResumeData,CompareData])
@@ -57,6 +62,51 @@ async def final_build(final_data: FinalBuilder):
     user_info =f"""Candidate Profile : {struct_data.result} \n Missing Keywords : {final_data.missing_keywords}"""
     final_taskid = rebuilt_agent.delay(resume_rebuilt_prompt,user_info)
     return TaskID(task_id=str(final_taskid))
+
+# -----------------------------------------------------------------------------------------------------
+                                              # ASHMITH #
+#------------------------------------------------------------------------------------------------------
+
+@app.post("/generate-resume")
+async def generate_resume(
+    basic_details: Dict[str, Any] = Body(..., embed=True),
+    resume_data: Dict[str, Any] = Body(..., embed=True)
+    ):
+    try:
+        pdf_result = await generate_resume_from_json(basic_details, resume_data)
+        delete_file.apply_async((pdf_result["download_url"][1],), countdown=FILE_EXPIRE)
+        if pdf_result:
+            return {
+                "pdf": {
+                    "download_url": pdf_result["download_url"][0]
+                }
+            }
+    except Exception as error:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR, detail= str(error)
+        )
+    
+@app.get("/resume/download/{filename}")
+async def download_pdf(filename: str) -> FileResponse :
+    file_path = os.path.join(PDF_DIR, filename)
+    if os.path.exists(file_path):
+        # Check if file is not empty
+        if os.path.getsize(file_path) > 0:
+            return FileResponse(
+                path=file_path,
+                filename="resume.pdf", 
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": "attachment; filename=resume.pdf",
+                    "Content-Type": "application/pdf"
+                }
+            )
+        else:
+            return JSONResponse(content={"error": "PDF file is empty"}, status_code=500)
+    else:
+        print(f"PDF file not found: {file_path}")
+        return JSONResponse(content={"error": "File not found"}, status_code=404)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", port=8000, log_level="info")
