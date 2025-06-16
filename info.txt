@@ -1,0 +1,33 @@
+
+🐳 Docker Commands Cheat Sheet
+
+🚀 To start Docker services in the background:
+    docker compose up -d
+
+🛑 To stop and remove containers, networks, and volumes:
+    docker compose down
+
+🔁 To restart containers:
+    docker compose restart
+
+🧭 To monitor running containers:
+    docker ps
+
+🧱 To check available Docker images:
+    docker images
+
+📄 To view logs of a specific service:
+    docker logs -f <service_name>
+    (Replace <service_name> with your actual container name)
+
+💻 To enter a container's shell:
+    docker exec -it <service_name> /bin/bash
+    (Use /bin/sh if /bin/bash is unavailable)
+
+
+📡 Systemd Service Monitoring
+
+🔍 To live-monitor a systemd service:
+    journalctl -fu test_doc.service
+
+(Use this to see live logs and status of test_doc.service)

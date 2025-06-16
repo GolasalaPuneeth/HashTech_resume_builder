@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:8.0.2
+    container_name: redis_server
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_app
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/HashTech_resume_builder
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: celery_worker
+    depends_on:
+      - redis
+    command: celery -A AI_agent.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - .:/HashTech_resume_builder
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
