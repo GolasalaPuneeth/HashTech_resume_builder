@@ -33,7 +33,7 @@ services:
     container_name: celery_worker
     depends_on:
       - redis
-    command: celery -A AI_agent.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A AI_agent.celery_app worker --loglevel=info
     volumes:
       - .:/HashTech_resume_builder
     environment:

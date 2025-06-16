@@ -27,6 +27,8 @@
 
 📡 Systemd Service Monitoring
 
+on server - sudo systemctl status doc_app.service
+
 🔍 To live-monitor a systemd service:
     journalctl -fu test_doc.service
 
