@@ -116,4 +116,4 @@ async def download_pdf(filename: str) -> FileResponse :
 
 app.include_router(auth_router)
 if __name__ == "__main__":
-    uvicorn.run("main:app",host="0.0.0.0", port=8000, log_level="info", timeout_keep_alive=600, workers=2)
+    uvicorn.run("main:app",host="0.0.0.0", port=8000, log_level="info", timeout_keep_alive=600)
