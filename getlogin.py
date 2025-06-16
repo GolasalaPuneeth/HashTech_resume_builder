@@ -23,7 +23,7 @@ async def validate_token(credentials: HTTPAuthorizationCredentials = Depends(aut
     return credentials.credentials
 
 
-@auth_router.post("/user/register",status_code=status.HTTP_201_CREATED)# ,dependencies=[Depends(validate_token)])
+@auth_router.post("/user/register",status_code=status.HTTP_201_CREATED,dependencies=[Depends(validate_token)])
 async def create_user(user: User, session: AsyncSession = Depends(get_session)):
     try:
         session.add(user)
@@ -35,7 +35,7 @@ async def create_user(user: User, session: AsyncSession = Depends(get_session)):
         #print(f"❌ Error creating user: {e}")
         raise HTTPException(status_code=500, detail=f"Error while creating user{e}")
 
-@auth_router.put("/user/forgotpass",status_code=status.HTTP_202_ACCEPTED)#,dependencies=[Depends(validate_token)])
+@auth_router.put("/user/forgotpass",status_code=status.HTTP_202_ACCEPTED,dependencies=[Depends(validate_token)])
 async def update_password(email,new_password,session: AsyncSession = Depends(get_session)):
     try:
         result = await session.exec(select(User).where(User.email == email))
