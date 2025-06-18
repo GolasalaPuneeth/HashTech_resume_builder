@@ -31,7 +31,7 @@ model_config = {
 @celery_app.task(name='tasks.struct_agent')
 def struct_agent(system_prompt:str,file_path:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
-    'openai:gpt-4o',
+    'openai:gpt-4.1-mini',
     output_type=Union[ResumeData, str],
     system_prompt=system_prompt,
     model_params=model_config
@@ -59,7 +59,7 @@ def compare_agent(system_prompt:str,user_info:str):
 @celery_app.task(name='tasks.rebuilt_agent')
 def rebuilt_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
-    'openai:gpt-4o',
+    'openai:gpt-4.1-nano',
     output_type=Union[ResumeData, str],
     system_prompt=system_prompt,
     model_params=model_config
