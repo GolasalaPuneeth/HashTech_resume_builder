@@ -82,10 +82,10 @@ def delete_file(file_path):
 def mail_service(mailaddress: str,code: int):
     html_content = otp_format(code)
     TO_EMAIL = mailaddress #"puneeth.ku@hashtechinfo.com"  # Replace with your test email (e.g., Gmail)
-    FROM_EMAIL = os.environ.get("SMTP_USERNAME")
-    SMTP_SERVER = os.environ.get("SMTP_SERVER")
-    SMTP_PORT = os.environ.get("SMTP_PORT")
-    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+    FROM_EMAIL = os.getenv("SMTP_USERNAME")
+    SMTP_SERVER = os.getenv("SMTP_SERVER")
+    SMTP_PORT = os.getenv("SMTP_PORT")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
     msg = EmailMessage()
     msg["Subject"] = "🔐 Your OTP Code"
     msg["From"] = FROM_EMAIL
