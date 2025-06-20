@@ -9,6 +9,7 @@ from app_tools import save_file,generate_resume_from_json,PDF_DIR
 from AI_agent import struct_agent,celery_app,compare_agent,rebuilt_agent,delete_file
 from prompts import convert_struct_prompt,compare_struct_prompt,resume_rebuilt_prompt
 from getlogin import auth_router
+from user_profile import user_details
 import uvicorn
 import os
 
@@ -52,12 +53,13 @@ async def get_task_result(task_id: str):
 
 @app.post("/job_desc",response_model=ResumeAndCurrentTaskID,status_code=status.HTTP_202_ACCEPTED)
 async def job_desc(job_desc_with_id: JobDescWithID):
-    struct_data = AsyncResult(job_desc_with_id.task_id,app=celery_app)
-    if struct_data.result == None:
-        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY,detail="Session Expired")
-    user_info =f"""Candidate Profile : {struct_data.result} \n Job Description : {job_desc_with_id.job_description}"""
-    current_task_id = compare_agent.delay(compare_struct_prompt,user_info)
-    return ResumeAndCurrentTaskID(task_id=job_desc_with_id.task_id,match_score_task_id=str(current_task_id))
+    if job_desc_with_id.task_id:
+        struct_data = AsyncResult(job_desc_with_id.task_id,app=celery_app)
+        if struct_data.result == None:
+            raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY,detail="Session Expired")
+        user_info =f"""Candidate Profile : {struct_data.result} \n Job Description : {job_desc_with_id.job_description}"""
+        current_task_id = compare_agent.delay(compare_struct_prompt,user_info)
+        return ResumeAndCurrentTaskID(task_id=job_desc_with_id.task_id,match_score_task_id=str(current_task_id))
 
 @app.post("/final_builder",response_model = TaskID,status_code=status.HTTP_202_ACCEPTED)
 async def final_build(final_data: FinalBuilder):
@@ -68,6 +70,13 @@ async def final_build(final_data: FinalBuilder):
     final_taskid = rebuilt_agent.delay(resume_rebuilt_prompt,user_info)
     return TaskID(task_id=str(final_taskid))
 
+@app.post("/mytest/")
+async def ccheck_task(data: JobDescWithID):
+    # Simulate fetching task logic
+    if not data.email:
+        return {"received": data.task_id}
+    return {"received": data.email}
+    
 # -----------------------------------------------------------------------------------------------------
                                               # ASHMITH #
 #------------------------------------------------------------------------------------------------------
@@ -115,5 +124,7 @@ async def download_pdf(filename: str) -> FileResponse :
     
 
 app.include_router(auth_router)
+app.include_router(user_details)
+
 if __name__ == "__main__":
     uvicorn.run("main:app",host="0.0.0.0", port=8000, log_level="info", timeout_keep_alive=600)

@@ -102,4 +102,3 @@ async def verify_otp_api(email: str, otp: str):
         await save_otp(email.lower()+otp,"Active")
         return {"valid": True}
     return {"valid": False}
-

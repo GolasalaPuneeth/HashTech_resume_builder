@@ -1,11 +1,19 @@
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel, Field, model_validator
+from typing import List,Optional
 
 class TaskID(BaseModel):
     task_id : str
 
-class JobDescWithID(TaskID):
+class JobDescWithID(BaseModel):
+    task_id: Optional[str] = None
+    email:Optional[str] = None
     job_description:str 
+
+    @model_validator(mode='after')
+    def validate_at_least_one(self):
+        if not self.task_id and not self.email:
+            raise ValueError("Either 'task_id' or 'email' must be provided")
+        return self
 
 class ResumeAndCurrentTaskID(TaskID):
     match_score_task_id: str
@@ -43,3 +51,8 @@ class CompareData(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserDetails(BaseModel):
+    name: str
+    email: str
+    phone_number: str

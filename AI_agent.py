@@ -17,7 +17,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     print("Error: OPENAI_API_KEY environment variable not set.")
     raise ValueError("Error: OPENAI_API_KEY environment variable not set.")
-print(OPENAI_API_KEY)
 celery_app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0', result_expires=900)
 #celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0', result_expires=900)
 
@@ -61,7 +60,7 @@ def compare_agent(system_prompt:str,user_info:str):
 @celery_app.task(name='tasks.rebuilt_agent')
 def rebuilt_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
-    'openai:gpt-4.1-nano',
+    'openai:gpt-4.1',
     output_type=Union[ResumeData, str],
     system_prompt=system_prompt,
     model_params=model_config
