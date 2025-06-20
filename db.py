@@ -13,7 +13,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     print("Error: DB URL environment variable not set.")
-    raise ValueError("Error: DB URL environment variable not set.")
+    #raise ValueError("Error: DB URL environment variable not set.")
 
 print(DATABASE_URL)
 engine = create_async_engine(DATABASE_URL, echo=True)
