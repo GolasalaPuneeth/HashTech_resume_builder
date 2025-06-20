@@ -9,7 +9,7 @@ load_dotenv()
 # DATABASE_URL = "sqlite+aiosqlite:///ResumeBuild.db"
 # if not os.environ.get("DATABASE_URL"):
 #     os.environ["DATABASE_URL"] = getpass.getpass("Enter API key for OpenAI: ")
-os.environ["DATABASE_URL"] = os.getenv("DATABASE_URL")
+#os.environ["DATABASE_URL"] = os.getenv("DATABASE_URL")
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     print("Error: DB URL environment variable not set.")
