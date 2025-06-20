@@ -8,11 +8,17 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 
 # DATABASE_URL = "sqlite+aiosqlite:///ResumeBuild.db"
-if not os.environ.get("DATABASE_URL"):
-    os.environ["DATABASE_URL"] = getpass.getpass("Enter API key for OpenAI: ")
-DATABASE_URL = os.environ.get("DATABASE_URL")
-engine = create_async_engine(DATABASE_URL, echo=True)
+# if not os.environ.get("DATABASE_URL"):
+#     os.environ["DATABASE_URL"] = getpass.getpass("Enter API key for OpenAI: ")
+os.environ["DATABASE_URL"] = os.getenv("DATABASE_URL") # Or whatever your DB URL is
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    print("Error: DB URL environment variable not set.")
+    raise ValueError("Error: DB URL environment variable not set.")
+
+
+engine = create_async_engine(DATABASE_URL, echo=True)
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )

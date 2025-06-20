@@ -12,10 +12,12 @@ import os
 import getpass
 
 load_dotenv()
-
-if not os.environ.get("OPENAI_API_KEY"):
-    os.environ["OPENAI_API_KEY"] = getpass.getpass("Enter API key for OpenAI: ")
-#FOR PRODUCt
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    print("Error: OPENAI_API_KEY environment variable not set.")
+    raise ValueError("Error: OPENAI_API_KEY environment variable not set.")
+print(OPENAI_API_KEY)
 celery_app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0', result_expires=900)
 #celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0', result_expires=900)
 
