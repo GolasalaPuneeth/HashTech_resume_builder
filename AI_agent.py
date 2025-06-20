@@ -86,6 +86,7 @@ def mail_service(mailaddress: str,code: int):
     SMTP_SERVER = os.getenv("SMTP_SERVER")
     SMTP_PORT = os.getenv("SMTP_PORT")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+    print(FROM_EMAIL,FROM_EMAIL,SMTP_SERVER,SMTP_PORT,SMTP_PASSWORD)
     msg = EmailMessage()
     msg["Subject"] = "🔐 Your OTP Code"
     msg["From"] = FROM_EMAIL
