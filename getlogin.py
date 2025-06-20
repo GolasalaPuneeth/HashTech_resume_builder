@@ -26,6 +26,7 @@ async def validate_token(credentials: HTTPAuthorizationCredentials = Depends(aut
 @auth_router.post("/user/register",status_code=status.HTTP_201_CREATED,dependencies=[Depends(validate_token)])
 async def create_user(user: User, session: AsyncSession = Depends(get_session)):
     try:
+        user.email = user.email.lower()
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -36,9 +37,9 @@ async def create_user(user: User, session: AsyncSession = Depends(get_session)):
         raise HTTPException(status_code=500, detail=f"Error while creating user{e}")
 
 @auth_router.put("/user/forgotpass",status_code=status.HTTP_202_ACCEPTED,dependencies=[Depends(validate_token)])
-async def update_password(email,new_password,session: AsyncSession = Depends(get_session)):
+async def update_password(email:str,new_password:str,session: AsyncSession = Depends(get_session)):
     try:
-        result = await session.exec(select(User).where(User.email == email))
+        result = await session.exec(select(User).where(User.email == email.lower()))
         user = result.first()
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -53,9 +54,9 @@ async def update_password(email,new_password,session: AsyncSession = Depends(get
         raise HTTPException(status_code=500, detail=f"Failed to update password: {e}")
     
 @auth_router.get("/user/Checkmail")#,dependencies=[Depends(validate_token)])
-async def check_mail(email,session: AsyncSession = Depends(get_session)):
+async def check_mail(email:str,session: AsyncSession = Depends(get_session)):
     try:
-        result = await session.exec(select(User).where(User.email == email))
+        result = await session.exec(select(User).where(User.email == email.lower()))
         user = result.first()
         if user:
             raise HTTPException(status_code=status.HTTP_306_RESERVED, detail="User found")
@@ -69,7 +70,7 @@ async def check_mail(email,session: AsyncSession = Depends(get_session)):
 @auth_router.post("/user/login")
 async def login(login_details: UserLogin, session: AsyncSession = Depends(get_session)):
     try:
-        result = await session.exec(select(User).where(User.email == login_details.email))
+        result = await session.exec(select(User).where(User.email == login_details.email.lower()))
         user = result.first()
         if not user:
             raise HTTPException(
@@ -90,15 +91,15 @@ async def login(login_details: UserLogin, session: AsyncSession = Depends(get_se
 @auth_router.post("/send-otp/")
 async def send_otp_api(email: str):
     otp = await generate_six_digit_number()
-    success = await save_otp(email, otp)
+    success = await save_otp(email.lower(), otp)
     mail_service.apply_async(args=[email, otp])
     return {"status": "ok" if success else "fail"}
 
 
 @auth_router.post("/verify-otp/")
 async def verify_otp_api(email: str, otp: str):
-    if await verify_otp(email, otp):
-        await save_otp(email+otp,"Active")
+    if await verify_otp(email.lower(), otp):
+        await save_otp(email.lower()+otp,"Active")
         return {"valid": True}
     return {"valid": False}
 
