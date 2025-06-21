@@ -15,11 +15,25 @@ class JobDescWithID(BaseModel):
             raise ValueError("Either 'task_id' or 'email' must be provided")
         return self
 
-class ResumeAndCurrentTaskID(TaskID):
+class ResumeAndCurrentTaskID(BaseModel):
     match_score_task_id: str
+    task_id:Optional[str] = None
+    email:Optional[str] = None
+    @model_validator(mode='after')
+    def validate_at_least_one(self):
+        if not self.task_id and not self.email:
+            raise ValueError("Either 'task_id' or 'email' must be provided")
+        return self
 
-class FinalBuilder(TaskID):
+class FinalBuilder(BaseModel):
     missing_keywords: List[str]
+    task_id:Optional[str] = None
+    email:Optional[str] = None
+    @model_validator(mode='after')
+    def validate_at_least_one(self):
+        if not self.task_id and not self.email:
+            raise ValueError("Either 'task_id' or 'email' must be provided")
+        return self
 
 class WorkExperience(BaseModel):
     job_title: str
@@ -42,6 +56,8 @@ class ResumeData(BaseModel):
     projects: List[Project]
     Professional_Summary : str
     Year_of_experience: int
+    class Config:
+        extra = "allow"
 
 class CompareData(BaseModel):
     match_rate: int

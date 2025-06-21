@@ -1,5 +1,5 @@
-from fastapi import FastAPI,UploadFile,File,HTTPException,status,Body
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi import FastAPI,UploadFile,File,HTTPException,status,Body,Depends
+from fastapi.responses import JSONResponse, FileResponse,StreamingResponse
 from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Union
@@ -10,13 +10,17 @@ from AI_agent import struct_agent,celery_app,compare_agent,rebuilt_agent,delete_
 from prompts import convert_struct_prompt,compare_struct_prompt,resume_rebuilt_prompt
 from getlogin import auth_router
 from user_profile import user_details
+from test_func import generate_pdf_bytes_chunked
+from db_tools import get_user_master_data
+from db import get_session,AsyncSession
+import json
 import uvicorn
 import os
 
 EXPIRE_TIME: int = 300
 FILE_EXPIRE: int = 150
 
-app = FastAPI(root_path="/resumeBuilder-Dev")
+app = FastAPI(root_path="/resumeBuilder-Dev",title="Tap My Talent",)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +56,7 @@ async def get_task_result(task_id: str):
     return task_result.result
 
 @app.post("/job_desc",response_model=ResumeAndCurrentTaskID,status_code=status.HTTP_202_ACCEPTED)
-async def job_desc(job_desc_with_id: JobDescWithID):
+async def job_desc(job_desc_with_id: JobDescWithID,session:AsyncSession = Depends(get_session)):
     if job_desc_with_id.task_id:
         struct_data = AsyncResult(job_desc_with_id.task_id,app=celery_app)
         if struct_data.result == None:
@@ -60,22 +64,75 @@ async def job_desc(job_desc_with_id: JobDescWithID):
         user_info =f"""Candidate Profile : {struct_data.result} \n Job Description : {job_desc_with_id.job_description}"""
         current_task_id = compare_agent.delay(compare_struct_prompt,user_info)
         return ResumeAndCurrentTaskID(task_id=job_desc_with_id.task_id,match_score_task_id=str(current_task_id))
+    struct_data = await get_user_master_data(job_desc_with_id.email,session=session)
+    user_info =f"""Candidate Profile : {struct_data} \n Job Description : {job_desc_with_id.job_description}"""
+    current_task_id = compare_agent.delay(compare_struct_prompt,user_info)
+    return ResumeAndCurrentTaskID(email=job_desc_with_id.email,match_score_task_id=str(current_task_id))
 
 @app.post("/final_builder",response_model = TaskID,status_code=status.HTTP_202_ACCEPTED)
-async def final_build(final_data: FinalBuilder):
-    struct_data = AsyncResult(final_data.task_id,app=celery_app)
-    if struct_data.result == None:
-        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY,detail="Session Expired")    
-    user_info =f"""Candidate Profile : {struct_data.result} \n Missing Keywords : {final_data.missing_keywords}"""
+async def final_build(final_data: FinalBuilder,session:AsyncSession = Depends(get_session)):
+    if final_data.task_id:
+        struct_data = AsyncResult(final_data.task_id,app=celery_app)
+        if struct_data.result == None:
+            raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY,detail="Session Expired")    
+        user_info =f"""Candidate Profile : {struct_data} \n Missing Keywords : {final_data.missing_keywords}"""
+        final_taskid = rebuilt_agent.delay(resume_rebuilt_prompt,user_info)
+        return TaskID(task_id=str(final_taskid))
+    struct_data = await get_user_master_data(final_data.email,session=session)
+    user_info =f"""Candidate Profile : {struct_data} \n Missing Keywords : {final_data.missing_keywords}"""
     final_taskid = rebuilt_agent.delay(resume_rebuilt_prompt,user_info)
     return TaskID(task_id=str(final_taskid))
 
-@app.post("/mytest/")
-async def ccheck_task(data: JobDescWithID):
+@app.get("/mytest/")
+async def ccheck_task():
     # Simulate fetching task logic
-    if not data.email:
-        return {"received": data.task_id}
-    return {"received": data.email}
+    html_content_for_pdf = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Chunked Stream PDF</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: 'Inter', sans-serif; margin: 40px; background-color: #f0f4f8; color: #2c3e50; }
+            .container { max-width: 700px; margin: 0 auto; padding: 25px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+            h1 { color: #1abc9c; border-bottom: 2px solid #1abc9c; padding-bottom: 10px; text-align: center; font-size: 2.2em; margin-bottom: 25px;}
+            p { line-height: 1.7; margin-bottom: 12px; font-size: 1.05em; }
+            .info-box { background-color: #e8f8f5; border-left: 5px solid #16a085; padding: 15px; border-radius: 8px; margin-top: 20px; font-style: italic; color: #16a085;}
+            .footer { margin-top: 40px; text-align: center; font-size: 0.85em; color: #7f8c8d; padding-top: 15px; border-top: 1px dashed #ecf0f1; }
+            .highlight-date { font-weight: bold; color: #e74c3c; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Dynamic Report - Chunked Stream</h1>
+            <p>This document showcases a PDF being generated by <strong>FastAPI</strong> 
+               and <strong>WeasyPrint</strong>, then streamed to your browser in small chunks.</p>
+            
+            <p class="info-box">
+                Generated dynamically on <span class="highlight-date">June 20, 2025</span> 
+                at <span class="highlight-date">Hyderabad, Telangana, India</span>.
+                The file is sent in <span class="highlight-date">1024-byte chunks</span> for efficient transfer.
+            </p>
+
+            <p>This method is ideal for reducing memory footprint on the server during the transfer phase, 
+               especially for very large files, and allows the client to start processing data sooner.</p>
+
+            <div class="footer">
+                Built for efficiency by Gemini.
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    pdf_stream_generator = generate_pdf_bytes_chunked(html_content_for_pdf)
+
+    # Return a StreamingResponse.
+    # FastAPI will iterate over the generator and send each yielded chunk to the client.
+    return StreamingResponse(
+        content=pdf_stream_generator,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=chunked_stream_document.pdf"}
+    )
     
 # -----------------------------------------------------------------------------------------------------
                                               # ASHMITH #
