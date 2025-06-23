@@ -58,6 +58,21 @@ class ResumeData(BaseModel):
     class Config:
         extra = "allow"
 
+class EduInfo(BaseModel):
+    institution:Optional[str] = None
+    location:Optional[str] = None
+    degree:Optional[str] = None
+    startDate:Optional[str] = None
+    endDate:Optional[str] = None
+
+class CertificateInfo(BaseModel):
+    Title:Optional[str] = None
+    Desc: Optional[str] = None
+
+class EduDetails(BaseModel):
+    Education:List[EduInfo]
+    Certifications: List[CertificateInfo]
+
 class CompareData(BaseModel):
     match_rate: int
     missing_keywords: List[str]

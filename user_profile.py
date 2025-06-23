@@ -2,8 +2,8 @@ from fastapi import APIRouter,HTTPException,Depends,status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from db import get_session,AsyncSession
 from DBModels import User
-from sqlmodel import select
-from validation import UserDetails,ResumeData
+from sqlmodel import select,update
+from validation import UserDetails,ResumeData,EduDetails
 import json
 from db_tools import get_user_master_data
 
@@ -46,4 +46,34 @@ async def update_user_master_data(email:str,resume_data:ResumeData, session: Asy
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=f"Unable to update Data: {e}")
+    
+@user_details.get("/Master-Edu",status_code=status.HTTP_200_OK,response_model=EduDetails)
+async def get_user_Edu(email:str, session: AsyncSession = Depends(get_session)):
+    #To use EduDetails(**json.loads(sam))
+    try:
+        result = await session.exec(select(User.Education).where(User.email == email.lower()))
+        edu = result.first()
+        if edu is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User not found {e}")
+        return EduDetails(**json.loads(edu))
+    except Exception as e:
+        raise e
 
+@user_details.put("/Master-Edu",status_code=status.HTTP_200_OK)
+async def update_user_Edu(email:str,education:EduDetails, session: AsyncSession = Depends(get_session)):
+    #To use EduDetails(**json.loads(sam))
+    try:
+        stmt = (
+            update(User)
+            .where(User.email == email.lower())
+            .values(Education=education.model_dump_json())
+            .execution_options(synchronize_session="fetch")  # "fetch", "evaluate", or False
+        )
+        result = await session.exec(stmt)
+        await session.commit()
+        if result.rowcount == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return {"Status": "Updated"}
+    except Exception as e:
+        await session.rollback()        
+        raise e
