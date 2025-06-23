@@ -13,7 +13,7 @@ if not DATABASE_URL:
 
 print(DATABASE_URL)
 engine = create_async_engine(DATABASE_URL, 
-                             echo=True,
+                             #for live updates echo=True,
                              future=True,
                              # Disable prepared statement caching
                              connect_args={"statement_cache_size": 0})
