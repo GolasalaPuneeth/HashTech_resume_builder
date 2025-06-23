@@ -8,7 +8,6 @@ class JobDescWithID(BaseModel):
     task_id: Optional[str] = None
     email:Optional[str] = None
     job_description:str 
-
     @model_validator(mode='after')
     def validate_at_least_one(self):
         if not self.task_id and not self.email:

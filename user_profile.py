@@ -38,10 +38,11 @@ async def update_user_master_data(email:str,resume_data:ResumeData, session: Asy
         user = result.first()
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User not found {e}")
-        user.Master_resune_data = json.dumps(resume_data)
+        user.Master_resune_data = str(resume_data.model_dump())
+        print(type(user.Master_resune_data))
         await session.commit()
         await session.refresh(user)
-        return True
+        return {"status":True}
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=f"Unable to update Data: {e}")
