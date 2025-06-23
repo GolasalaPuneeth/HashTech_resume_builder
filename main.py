@@ -75,7 +75,7 @@ async def final_build(final_data: FinalBuilder,session:AsyncSession = Depends(ge
         struct_data = AsyncResult(final_data.task_id,app=celery_app)
         if struct_data.result == None:
             raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY,detail="Session Expired")    
-        user_info =f"""Candidate Profile : {struct_data} \n Missing Keywords : {final_data.missing_keywords}"""
+        user_info =f"""Candidate Profile : {struct_data.result} \n Missing Keywords : {final_data.missing_keywords}"""
         final_taskid = rebuilt_agent.delay(resume_rebuilt_prompt,user_info)
         return TaskID(task_id=str(final_taskid))
     struct_data = await get_user_master_data(final_data.email,session=session)
