@@ -13,10 +13,18 @@ if not DATABASE_URL:
 
 print(DATABASE_URL)
 engine = create_async_engine(DATABASE_URL, 
-                             echo=True,
+                             #echo=True,
                              future=True,
                              # Disable prepared statement caching
-                             connect_args={"statement_cache_size": 0})
+                             pool_size=5,
+                             max_overflow=5,
+                             pool_recycle=1800,
+                             pool_pre_ping=True,
+                             connect_args={
+                                "statement_cache_size": 0,
+                                "timeout": 10,
+                                "command_timeout": 5
+                            })
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )

@@ -51,7 +51,7 @@ def struct_agent(system_prompt:str,file_path:str):
 @celery_app.task(name='tasks.compare_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def compare_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[CompareData, str]] = Agent(
-    'openai:gpt-4.1-nano',
+    'openai:gpt-4.1-mini',
     output_type=Union[CompareData, str],
     system_prompt=system_prompt,
     model_params=model_config
