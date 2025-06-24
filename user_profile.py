@@ -23,39 +23,39 @@ async def get_user_details(email:str,session: AsyncSession = Depends(get_session
 
 @user_details.get("/Master-data",status_code=status.HTTP_200_OK,response_model=ResumeData)
 async def get_user_master_data_endpoint(email:str, session: AsyncSession = Depends(get_session)):
+    result = await get_user_master_data(email, session=session)
+    if not result:
+        raise HTTPException(status_code=404, detail="Master Data not found")
     try:
-        result = await get_user_master_data(email,session=session)
-        if result is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return ResumeData(**json.loads(result))
-    except Exception as e:
-        raise e
+    except (json.JSONDecodeError, TypeError, Exception) as e:
+        raise HTTPException(status_code=500, detail=f"Corrupted resume data in DB. indetail: {e}")
+
 
 @user_details.put("/Master-data",status_code=status.HTTP_202_ACCEPTED)
-async def update_user_master_data(email:str,resume_data:ResumeData, session: AsyncSession = Depends(get_session)):
+async def update_user_master_data(email:str, resume_data:ResumeData, session: AsyncSession = Depends(get_session)):
     try:
         result = await session.exec(select(User).where(User.email == email.lower()))
         user = result.first()
         if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User not found {e}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         user.Master_resune_data = json.dumps(resume_data.model_dump())
-        print(type(user.Master_resune_data))
         await session.commit()
         await session.refresh(user)
-        return {"status":True}
+        return {"status": True}
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=f"Unable to update Data: {e}")
-    
+        raise HTTPException(status_code=500, detail=f"Unable to update Data: {str(e)}")
+   
 @user_details.get("/Master-Edu",status_code=status.HTTP_200_OK,response_model=EduDetails)
 async def get_user_Edu(email:str, session: AsyncSession = Depends(get_session)):
     #To use EduDetails(**json.loads(sam))
     try:
-        result = await session.exec(select(User.Education).where(User.email == email.lower()))
+        result = await session.exec(select(User).where(User.email == email.lower()))
         edu = result.first()
         if edu is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User not found {e}")
-        return EduDetails(**json.loads(edu))
+        return EduDetails(**json.loads(edu.Education))
     except Exception as e:
         raise e
 

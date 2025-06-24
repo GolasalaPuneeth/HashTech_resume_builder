@@ -26,10 +26,11 @@ model_config = {
         "max_tokens": 1500,  # Sufficient for long resumes
         "frequency_penalty": 0.5,  # Avoids redundant bullet points
         "presence_penalty": 0.5,   # Encourages diverse descriptions
+        "request_timeout": 30
         }
 
 
-@celery_app.task(name='tasks.struct_agent')
+@celery_app.task(name='tasks.struct_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def struct_agent(system_prompt:str,file_path:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
     'openai:gpt-4.1-mini',
@@ -38,13 +39,16 @@ def struct_agent(system_prompt:str,file_path:str):
     model_params=model_config
     )
     raw_resume_text = asyncio.run(text_extracter(file_path))
-    result = agent.run_sync(raw_resume_text)
-    if isinstance(result.output, ResumeData):
-        return result.output.model_dump()  # Use Pydantic's model_dump()
-    return result.output
+    try:
+        result = agent.run_sync(raw_resume_text)
+        if isinstance(result.output, ResumeData):
+            return result.output.model_dump()  # Use Pydantic's model_dump()
+        return result.output
+    except Exception as e:
+        return {"error": f"LLM failure: {str(e)}"}
 
 
-@celery_app.task(name='tasks.compare_agent')
+@celery_app.task(name='tasks.compare_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def compare_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[CompareData, str]] = Agent(
     'openai:gpt-4.1-nano',
@@ -52,12 +56,15 @@ def compare_agent(system_prompt:str,user_info:str):
     system_prompt=system_prompt,
     model_params=model_config
     )
-    result = agent.run_sync(user_info)
-    if isinstance(result.output, CompareData):
-        return result.output.model_dump()  # Use Pydantic's model_dump()
-    return result.output
+    try:
+        result = agent.run_sync(user_info)
+        if isinstance(result.output, CompareData):
+            return result.output.model_dump()  # Use Pydantic's model_dump()
+        return result.output
+    except Exception as e:
+        return {"error": f"LLM failure: {str(e)}"}
 
-@celery_app.task(name='tasks.rebuilt_agent')
+@celery_app.task(name='tasks.rebuilt_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def rebuilt_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
     'openai:gpt-4.1',
@@ -65,10 +72,13 @@ def rebuilt_agent(system_prompt:str,user_info:str):
     system_prompt=system_prompt,
     model_params=model_config
     )
-    result = agent.run_sync(user_info)
-    if isinstance(result.output, ResumeData):
-        return result.output.model_dump()  # Use Pydantic's model_dump()
-    return result.output
+    try:
+        result = agent.run_sync(user_info)
+        if isinstance(result.output, ResumeData):
+            return result.output.model_dump()  # Use Pydantic's model_dump()
+        return result.output
+    except Exception as e:
+        return {"error": f"LLM failure: {str(e)}"}
 
 @celery_app.task(name='tasks.delete_file')
 def delete_file(file_path):
@@ -77,7 +87,7 @@ def delete_file(file_path):
     except Exception as error:
         print(f"error at file delete: {error}")
 
-@celery_app.task(name="task.mail_service")
+@celery_app.task(name="task.mail_service",autoretry_for=(Exception,), retry_kwargs={'max_retries': 2})
 def mail_service(mailaddress: str,code: int):
     html_content = otp_format(code)
     TO_EMAIL = mailaddress #"puneeth.ku@hashtechinfo.com"  # Replace with your test email (e.g., Gmail)
@@ -86,6 +96,9 @@ def mail_service(mailaddress: str,code: int):
     SMTP_PORT = os.getenv("SMTP_PORT")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
     #print(FROM_EMAIL,FROM_EMAIL,SMTP_SERVER,SMTP_PORT,SMTP_PASSWORD)
+    if not (SMTP_SERVER and SMTP_PORT and FROM_EMAIL and SMTP_PASSWORD):
+        print("❌ Missing SMTP environment config")
+        return None
     msg = EmailMessage()
     msg["Subject"] = "🔐 Your OTP Code"
     msg["From"] = FROM_EMAIL
@@ -98,5 +111,5 @@ def mail_service(mailaddress: str,code: int):
             server.login(FROM_EMAIL, SMTP_PASSWORD)
             server.send_message(msg)
         print("✅ Email sent successfully!")
-    except Exception as e:
+    except smtplib.SMTPException as e:
         print(f"❌ Failed to send email: {e}")

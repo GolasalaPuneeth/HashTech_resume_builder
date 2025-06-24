@@ -10,5 +10,5 @@ class User(SQLModel, table=True):
     email: str = Field(sa_column=Column("email", String, unique=True, nullable=False))
     password: str
     phone_number: str
-    Master_resune_data: str 
+    Master_resune_data: Optional[str] = None 
     Education: Optional[str] = None

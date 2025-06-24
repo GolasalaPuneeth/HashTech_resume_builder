@@ -4,11 +4,8 @@ from sqlmodel import select
 from fastapi import HTTPException,status
 
 async def get_user_master_data(email:str, session: AsyncSession):
-    try:
         result = await session.exec(select(User).where(User.email == email.lower()))
         user = result.first()
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not found: ")
         return user.Master_resune_data
-    except Exception as e:
-        raise e
