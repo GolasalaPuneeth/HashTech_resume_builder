@@ -1,4 +1,4 @@
-from fastapi import FastAPI,UploadFile,File,HTTPException,status,Body,Depends
+from fastapi import FastAPI,UploadFile,File,HTTPException,status,Body,Depends,Request
 from fastapi.responses import JSONResponse, FileResponse,StreamingResponse
 from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +13,7 @@ from user_profile import user_details
 from test_func import generate_pdf_bytes_chunked
 from db_tools import get_user_master_data
 from db import get_session,AsyncSession
+import time
 import json
 import uvicorn
 import os
@@ -20,7 +21,7 @@ import os
 EXPIRE_TIME: int = 300
 FILE_EXPIRE: int = 150
 
-app = FastAPI(root_path="/resumeBuilder-Dev",title="Tap My Talent",)
+app = FastAPI(root_path="/resumeBuilder-Dev",title="Tap My Talent")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +31,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    end_time = time.perf_counter()
+    execution_time = (end_time - start_time) * 1000
+    response.headers["X-Response-Time"] = f"{execution_time:.2f} ms"
+    return response
 
 @app.post("/upload_file/",response_model=TaskID,status_code=status.HTTP_201_CREATED)
 async def get_file(resume: UploadFile = File(...)):
