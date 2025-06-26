@@ -1,4 +1,4 @@
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 16 * 1024
 from weasyprint import HTML
 import io
 from typing import Generator, AsyncGenerator

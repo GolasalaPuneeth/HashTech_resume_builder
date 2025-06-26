@@ -55,8 +55,6 @@ class ResumeData(BaseModel):
     projects: List[Project]
     Professional_Summary : str
     Year_of_experience: int
-    class Config:
-        extra = "allow"
 
 class EduInfo(BaseModel):
     institution:Optional[str] = None
@@ -86,3 +84,8 @@ class UserDetails(BaseModel):
     name: str
     email: str
     phone_number: str
+
+class LoginResponse(BaseModel):
+    status:str
+    name:str
+    email:str

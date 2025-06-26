@@ -4,7 +4,7 @@ from app_tools import save_otp,verify_otp,generate_six_digit_number
 from AI_agent import mail_service
 from db import get_session,AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
-from validation import UserLogin
+from validation import UserLogin,LoginResponse
 from sqlmodel import select
 from DBModels import User
 
@@ -50,7 +50,6 @@ async def update_password(email:str,new_password:str,session: AsyncSession = Dep
         return {"message": "Password updated successfully"}
     except Exception as e:
         await session.rollback()
-        print(f"❌ Error updating password: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update password: {e}")
     
 @auth_router.get("/user/Checkmail")#,dependencies=[Depends(validate_token)])
@@ -67,7 +66,7 @@ async def check_mail(email:str,session: AsyncSession = Depends(get_session)):
         raise e
 
 
-@auth_router.post("/user/login")
+@auth_router.post("/user/login",response_model=LoginResponse)
 async def login(login_details: UserLogin, session: AsyncSession = Depends(get_session)):
     try:
         result = await session.exec(select(User).where(User.email == login_details.email.lower()))
@@ -83,7 +82,7 @@ async def login(login_details: UserLogin, session: AsyncSession = Depends(get_se
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid password"
             )
-        return {"login": "SUCCESS", "user_email": user.email}
+        return LoginResponse(status="SUCCESS",name=user.name,email=user.email)
     except Exception as e:
         await session.rollback()
         raise e

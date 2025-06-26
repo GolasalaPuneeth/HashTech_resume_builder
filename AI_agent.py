@@ -6,7 +6,7 @@ from validation import ResumeData, CompareData
 from app_tools import text_extracter
 import smtplib
 from email.message import EmailMessage
-from prompts import otp_format
+from prompts import otp_format,STRUCT_AGENT_INSTRUCTIONS, COMPARE_AGENT_INSTRUCTIONS
 import asyncio
 import os
 import getpass
@@ -33,8 +33,9 @@ model_config = {
 @celery_app.task(name='tasks.struct_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def struct_agent(system_prompt:str,file_path:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
-    'openai:gpt-4.1-mini',
+    'openai:gpt-4.1',
     output_type=Union[ResumeData, str],
+    instructions = STRUCT_AGENT_INSTRUCTIONS,
     system_prompt=system_prompt,
     model_params=model_config
     )
@@ -53,6 +54,7 @@ def compare_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[CompareData, str]] = Agent(
     'openai:gpt-4.1-mini',
     output_type=Union[CompareData, str],
+    instructions=COMPARE_AGENT_INSTRUCTIONS,
     system_prompt=system_prompt,
     model_params=model_config
     )
@@ -67,7 +69,7 @@ def compare_agent(system_prompt:str,user_info:str):
 @celery_app.task(name='tasks.rebuilt_agent',autoretry_for=(Exception,), retry_kwargs={'max_retries': 2}, time_limit=60)
 def rebuilt_agent(system_prompt:str,user_info:str):
     agent: Agent[None, Union[ResumeData, str]] = Agent(
-    'openai:gpt-4.1',
+    'openai:gpt-3.5-turbo',
     output_type=Union[ResumeData, str],
     system_prompt=system_prompt,
     model_params=model_config
